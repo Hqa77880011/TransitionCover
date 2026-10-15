@@ -1,0 +1,8 @@
+{
+  "width": 24,
+  "fraction": 0.55,
+  "window": 20,
+  "probe_interval": 10,
+  "confirmation": 2,
+  "wake_cost": 0.2
+}

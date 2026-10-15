@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transitioncover"
+version = "0.1.0"
+description = "TransitionCover: Budgeted Sensor Observability for Responsive Smart-Home Activity Services"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "torch>=2.2", "scikit-learn>=1.3", "matplotlib>=3.7", "pillow>=10"]
+
+[project.scripts]
+transitioncover = "transitioncover.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["transitioncover*"]
