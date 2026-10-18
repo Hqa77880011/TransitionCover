@@ -2,91 +2,56 @@
 
 Implementation of **TransitionCover: Budgeted Sensor Observability for Responsive Smart-Home Activity Services**.
 
-Training estimates source-only class/channel distinguishability. At each time, predicted alternatives induce required transition pairs; pair ages and causal probability scores determine urgency. Greedy union-cost selection includes wake costs, completed observations, fixed-window read allowances, and periodic full-probe reservations. A mask-aware recurrent backend consumes only acquired measurements and confirms changes after consecutive acquired updates.
+## Installation
 
-## Install
-
-Use Python 3.10 or later. Create and activate a virtual environment, then install:
+Use Python 3.10+. Create and activate a virtual environment before installing:
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 python -m pip install -e .
 ```
 
-## Prepare data
+In PowerShell, replace the activation line with `.venv\Scripts\Activate.ps1`.
+
+## Data and preprocessing
 
 `x[N,T,S]` contains synchronous replay features, `y[N]` final activity label, and `state[N,T]` the timeline annotation used only for training/evaluation. Keep subject/home/session/day groups intact. For event channels preserve release semantics before exporting; absence of an event is not a fabricated observation. OPPORTUNITY/CASAS can be exported with a fixed annotated time grid.
 
-Arrays use numeric NPZ format, loaded without pickle. `group[N]` identifies independent subjects, devices, scenes, lots, or source images. Related samples must share a group. Optional `split[N]` codes 0/1/2/3 explicitly assign training/validation/calibration/test (three-role input using 0/1/2 remains supported); otherwise ordered groups are allocated 60/15/10/15 to training/validation/calibration/test. Test data never select model parameters or checkpoints.
+Arrays use numeric NPZ format, loaded without pickle. `group[N]` identifies independent source units; related samples must share a group. Optional `split[N]` codes 0/1/2/3 explicitly assign training/validation/calibration/test (three-role input using 0/1/2 remains supported); otherwise ordered groups are allocated 60/15/10/15 to training/validation/calibration/test. Test data never select model parameters or checkpoints.
+
+`demo` generates synthetic inputs for this tensor interface; application-specific results require acquired data.
 
 ```bash
-transitioncover demo --output data/example.npz --count 96 --config config.json
+transitioncover demo --output data/example.npz --count 96 --config config.json --seed 13
 transitioncover prepare --input data/example.npz --output data/prepared
 ```
 
-The demo defines a small synthetic problem with the documented tensor interface. Use application data in that schema for the paper's evaluation settings.
-
-## Train and execute
+## Training and inference
 
 ```bash
-transitioncover train --input data/prepared --output runs/full --config config.json --variant full --epochs 100 --batch-size 16
+transitioncover train --input data/prepared --output runs/full --config config.json --variant full --epochs 100 --batch-size 16 --seed 13
+```
+
+## Evaluation
+
+```bash
 transitioncover evaluate --input data/prepared/test.npz --model runs/full/model.pt --output runs/full/evaluation
 transitioncover plot --input runs --output runs/figures
 ```
 
-Training uses AdamW and selects the minimum validation objective. `model.pt` stores parameters and configuration; `history.json` records training/validation objectives. Evaluation exports predictions and mechanism tensors to `predictions.npz` and computed scores to `metrics.json`. Plotting exports comparison charts from those actual evaluation files.
+## Ablations
 
-`--device cpu` is the default; `--device cuda` selects CUDA. `--lr`, `--epochs`, `--batch-size`, and `--seed` control optimization. Method parameters are in `config.json`; `--set key=value` overrides one value using JSON syntax. Use identical splits and seeds across comparisons.
-
-## Calibration
-
-For interval or classification confidence calibration, use independent groups excluded from fitting and checkpoint selection:
+Supported controls: `baseline`, `no_probe`, `no_age`, `no_wake`. Keep the input groups, seed and budget fixed.
 
 ```bash
-transitioncover calibrate --input data/prepared/calibration.npz --model runs/full/model.pt --output runs/full/calibrated.pt
+transitioncover train --input data/prepared --config config.json --output runs/no_probe --variant no_probe --epochs 100 --batch-size 16 --seed 13
 ```
 
-Evaluate `calibrated.pt` with the same evaluation command. Classification uses temperature scaling; numeric intervals use a 90% group-maximum split-calibration expansion. Insufficient independent units retain infinite intervals. Pretraining checkpoints can initialize supervised training with `train --init path/to/model.pt`.
+## Outputs
 
-## Baselines and ablations
+`data/prepared/` contains train/validation/calibration/test NPZs. Training writes `model.pt`, `history.json` and `training.json` with run arguments. Evaluation writes `predictions.npz` and `metrics.json`; plotting reads saved metric files.
 
-Available variants: `full`, `baseline`, `no_age`, `no_probe`, `no_wake`. `baseline` removes the paper-specific mechanism while retaining the input and prediction task. Other variants disable their named component.
+Keep `config.json` with the run; it contains model/data settings and the seed where the CLI does not expose one. Use separate output directories for different seeds/conditions.
 
-```bash
-transitioncover train --input data/prepared --output runs/baseline --config config.json --variant baseline
-transitioncover evaluate --input data/prepared/test.npz --model runs/baseline/model.pt --output runs/baseline/evaluation
-```
-
-## Metrics and implementation conventions
-
-Classification reports accuracy, balanced accuracy, macro-F1, NLL, confidence ECE, and worst-group F1; binary tasks add AUROC and AUPRC. Unknown labels use -1 and enable unknown AUROC and OSCR. Segmentation reports Dice, IoU, precision, recall, MAE, Brier/ECE, two-pixel boundary F1, symmetric contour distance, and HD95. Reconstruction reports RMSE, MAE, signed bias, unit-range PSNR, and Gaussian-window SSIM. Each method adds its mechanism metrics where applicable.
-
-Parameter counts and forward timing describe the executing process. Use batch size one and a declared device configuration for device latency comparisons. Physical energy and scores from external task evaluators require measured inputs; they are not inferred from parameter counts. All prediction arrays remain available for task-specific evaluation.
-
-The implementation uses the explicit core operations described above with configurable compact networks. Numeric conventions and application-specific information are stated with the method and data schema. The parameter file contains the current defaults.
-
-## Reproduction logic conventions
-
-Every fixed readout window reserves all remaining complete periodic probes before discretionary acquisitions. A read allowance that cannot fund those probes is rejected. Notification confirmation requires acquired updates, and event matching ends at the next reference state change, so a later recurrence cannot repair an earlier missed transition. Acquisition completes at the current discrete tick in this compact setting.
-
-## Selected synchronous acquisition setting
-
-`config.json` fixes six channels, three states, width 24, 20-tick read windows,
-read allowance floor(0.55*20*6)=66 per window, a complete probe every ten ticks,
-two acquired confirmations and wake cost 0.2. Acquisition completes in the
-current tick; each selected channel costs one read. This synchronous sensor
-model is the chosen physical interface and requires no asynchronous device
-adapter or unprovided group/hold profile.
-
-```bash
-transitioncover demo --output data/example.npz --count 96 --config config.json
-transitioncover prepare --input data/example.npz --output data/prepared
-transitioncover train --input data/prepared --output runs/synchronous --config config.json --variant full --epochs 100 --seed 13
-transitioncover evaluate --input data/prepared/test.npz --model runs/synchronous/model.pt --output runs/synchronous/evaluation
-```
-
-For real streams, supply x[N,T,6], state[N,T], final y[N] and independent group[N]
-IDs. T can differ at evaluation because the GRU and budget windows run over the
-provided timeline; use finite independent episodes rather than resetting at
-known transition labels. The existing predictions.npz exports full timeline
-logits and readout[N,T,6], allowing direct resource-ledger checks on long streams.
-The included generated stream defines a valid self-contained setting.
+Source inspection: Python 3.13.5, numpy 2.1.3, scipy 1.15.3, torch 2.7.1+cu118, scikit-learn 1.6.1, matplotlib 3.10.0 (installed versions inspected). Checks covered Python syntax, configuration parsing and CLI arguments. No training, full evaluation or CI was run in this update.
