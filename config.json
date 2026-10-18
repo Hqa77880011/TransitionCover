@@ -4,5 +4,10 @@
   "window": 20,
   "probe_interval": 10,
   "confirmation": 2,
-  "wake_cost": 0.2
+  "wake_cost": 0.2,
+  "input_shape": [
+    40,
+    6
+  ],
+  "classes": 3
 }

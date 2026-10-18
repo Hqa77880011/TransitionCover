@@ -67,3 +67,26 @@ The implementation uses the explicit core operations described above with config
 ## Reproduction logic conventions
 
 Every fixed readout window reserves all remaining complete periodic probes before discretionary acquisitions. A read allowance that cannot fund those probes is rejected. Notification confirmation requires acquired updates, and event matching ends at the next reference state change, so a later recurrence cannot repair an earlier missed transition. Acquisition completes at the current discrete tick in this compact setting.
+
+## Selected synchronous acquisition setting
+
+`config.json` fixes six channels, three states, width 24, 20-tick read windows,
+read allowance floor(0.55*20*6)=66 per window, a complete probe every ten ticks,
+two acquired confirmations and wake cost 0.2. Acquisition completes in the
+current tick; each selected channel costs one read. This synchronous sensor
+model is the chosen physical interface and requires no asynchronous device
+adapter or unprovided group/hold profile.
+
+```bash
+transitioncover demo --output data/example.npz --count 96 --config config.json
+transitioncover prepare --input data/example.npz --output data/prepared
+transitioncover train --input data/prepared --output runs/synchronous --config config.json --variant full --epochs 100 --seed 13
+transitioncover evaluate --input data/prepared/test.npz --model runs/synchronous/model.pt --output runs/synchronous/evaluation
+```
+
+For real streams, supply x[N,T,6], state[N,T], final y[N] and independent group[N]
+IDs. T can differ at evaluation because the GRU and budget windows run over the
+provided timeline; use finite independent episodes rather than resetting at
+known transition labels. The existing predictions.npz exports full timeline
+logits and readout[N,T,6], allowing direct resource-ledger checks on long streams.
+The included generated stream defines a valid self-contained setting.
