@@ -47,7 +47,7 @@ def main():
         p.add_argument("--mask", action="store_true")
         p.add_argument("--count", type=int, default=96)
     args = parser.parse_args()
-    config = json.loads(Path(args.config).read_text()) if args.config else {}
+    config = json.loads(Path(args.config).read_text(encoding='utf-8')) if args.config else {}
     for setting in args.set:
         key, value = setting.split("=", 1)
         config[key] = json.loads(value)
@@ -112,7 +112,7 @@ def main():
             initial = torch.load(args.init, map_location=args.device, weights_only=True)
             network.load_state_dict(initial["state"])
         elif hasattr(network, "prepare"):
-            network.prepare(data)
+            network.prepare(data,validation)
         optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr)
         history, best = [], float("inf")
         start = time.perf_counter()
@@ -223,7 +223,7 @@ def main():
         paths = list(Path(args.input).rglob("metrics.json"))
         if not paths:
             raise ValueError("No evaluated metrics")
-        records = [json.loads(p.read_text()) for p in paths]
+        records = [json.loads(p.read_text(encoding='utf-8')) for p in paths]
         for key in sorted(set().union(*(set(r) for r in records))):
             if not all(isinstance(r.get(key), (int, float)) for r in records):
                 continue

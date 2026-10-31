@@ -1,5 +1,5 @@
 {
-  "width": 24,
+  "width": 64,
   "fraction": 0.55,
   "window": 20,
   "probe_interval": 10,
@@ -9,5 +9,9 @@
     40,
     6
   ],
-  "classes": 3
+  "classes": 3,
+  "feature_window": 5,
+  "distinction_threshold": 0.78,
+  "interval_s": 1.0,
+  "deadline_steps": 10
 }
