@@ -1,0 +1,25 @@
+{
+  "width": 64,
+  "fraction": 0.55,
+  "window": 300,
+  "probe_interval": 20,
+  "confirmation": 2,
+  "wake_cost": 0.2,
+  "input_shape": [
+    300,
+    12
+  ],
+  "classes": 6,
+  "feature_window": 5,
+  "distinction_threshold": 0.78,
+  "interval_s": 1.0,
+  "deadline_steps": 10,
+  "physical": true,
+  "minimum_on_s": 3.0,
+  "settling_s": 3.0,
+  "acquisition_s": 1.0,
+  "transfer_s": 0.5,
+  "communication_timeout_s": 6.0,
+  "burst_reserve": 0.1,
+  "retry_interval": 20
+}

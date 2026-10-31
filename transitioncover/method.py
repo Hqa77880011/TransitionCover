@@ -41,6 +41,9 @@ class Model(nn.Module):
         transitions/=np.maximum(transitions.sum(-1,keepdims=True),1)
         self.incidence.copy_(torch.as_tensor(incidence,device=self.incidence.device));self.transition.copy_(torch.as_tensor(transitions,device=self.transition.device))
     def forward(self,b):
+        if self.c.get('physical',False):
+            from .physical import forward_model
+            return forward_model(self,b)
         x=b['x'].float();n,time,sensors=x.shape;variant=self.c.get('variant','full');window=self.c.get('window',20);probe_interval=self.c.get('probe_interval',10)
         h=x.new_zeros(n,self.head.in_features);h2=h.clone();age=x.new_zeros(n,*self.transition.shape);previous=x.new_zeros(n,sensors);elapsed=previous.clone();remaining=x.new_zeros(n)
         predictions=[];readouts=[];attempts=[];unknown=[]
