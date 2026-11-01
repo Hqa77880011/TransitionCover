@@ -1,6 +1,6 @@
 # TransitionCover
 
-Implementation of **TransitionCover: Budgeted Sensor Observability for Responsive Smart-Home Activity Services**.
+**TransitionCover: Budgeted Sensor Observability for Responsive Smart-Home Activity Services**.
 
 ## Installation
 
@@ -54,9 +54,7 @@ transitioncover train --input data/prepared --config config.json --output runs/n
 
 Keep `config.json` with the run; it contains model/data settings and the seed where the CLI does not expose one. Use separate output directories for different seeds/conditions.
 
-Validation uses Python 3.13.5, NumPy 2.1.3, SciPy 1.15.3, PyTorch 2.7.1+cu118 (CPU), scikit-learn 1.6.1 and matplotlib 3.10.0. `python tests/functional_check.py` executes NPZ loading, training/development distinction-map fitting, grouped preparation, a one-epoch train/evaluate/plot cycle, finite loss/backward and key GRU/head updates, save/load equality (rtol 1e-5, atol 1e-6), and a hand-calculated two-transition case with delays 1/1 and deadline success 1. Seed 13; OMP/MKL/torch threads 1. No full training or original dataset replay was run.
-
-## Paper-to-code correspondence
+## Modules and metrics
 
 | Module / metric | Entry | Setting / command |
 |---|---|---|
@@ -71,7 +69,7 @@ Validation uses Python 3.13.5, NumPy 2.1.3, SciPy 1.15.3, PyTorch 2.7.1+cu118 (C
 
 `available[N,T,S]` optionally supplies replay completion availability. Failed attempts consume command allowance but never enter recognition or reset pair ages. `attempted_readout` and completed `readout` are exported separately. The age guard emits unknown after `probe_interval+confirmation` unchecked intervals for required graph edges. `interval_s`, `deadline_steps`, `probe_interval`, `window` and `confirmation` define time units; set them for the native recording grid. The demo uses one-second intervals and three classes; real source-specific six-class dictionaries and 12 endpoints must be exported without merging distinct source meanings. `paired_groups` is a list of zero-based endpoint-index lists. The default uses adjacent pairs.
 
-The logistic map uses causal rolling means (`feature_window=5`), a compact implementation choice for the paper's causal group features. The legacy instant-completion path is retained for controls; the completion-time path below models settling/transfer latency, minimum holds, quarantine/re-entry, scheduled-probe reservations and burst reserve under the same recognizer training/inference interface. Reported latency is host software time and the endpoint energy is an assumed proxy. The original OPPORTUNITY/CASAS session manifest, raw replay artifacts and measured gateway costs were not present in this repository. The supplied generator is a functional fixture, separate from original experiment evidence. Run sources separately and average their source-level metrics equally when reproducing the paper aggregation.
+The distinction map uses causal rolling means (`feature_window=5`). Instant-completion and delayed-completion paths share the recognizer interface. Reported latency measures host software time; endpoint energy uses the configured proxy. Run each source separately and average source-level metrics equally.
 
 ## Completion-time replay and source protocol
 
@@ -84,4 +82,4 @@ python -m transitioncover.physical --input data/prepared/test.npz --model runs/p
 
 `physical=true` routes training, validation and inference through the same delayed-completion scheduler and differentiable value/mask/elapsed recognizer. `no_reserve` is a timing control. `available[N,T,S]` describes eventual replay completion success and is hidden from selection until acknowledgement/timeout. `completion_ledger.json` records wakes, quarantines, probe admission, burst release and remaining allowance. With `source[N]`, metrics are computed within source and receive equal source weights. This is replay of declared physical timing, not a measured radio prototype or a calibrated battery-life estimate. Endpoint attempt charging is conservative and distinct from successful-completion fraction.
 
-`tests/physical_check.py` passed 4.5s observation/transfer timing, committed holds, unavailable-then-recovered endpoints, quarantine/re-entry, budget preservation, actual physical-path backward/parameter update and executable two-source equal-weight evaluation. Original physical measurements and source manifests remain external inputs.
+Physical-path checks: `python tests/physical_check.py`.
